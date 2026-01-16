@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Splash</title>
+    <link rel="stylesheet" href="slotstyle.css">
+</head>
+<body>
+    <div id="paytable-container">
+        <button id="toggle-paytable">i</button>
+        
+        <div class="paytable hidden"> <h3>Πίνακας Κερδών (για 5+)</h3>
+            <div class="paytable-grid">
+                <div class="pay-item"><span>7️⃣</span> <span>5.00€</span></div>
+                <div class="pay-item"><span>💎</span> <span>3.00€</span></div>
+                <div class="pay-item"><span>🍎</span> <span>1.50€</span></div>
+                <div class="pay-item"><span>🍀</span> <span>1.00€</span></div>
+                <div class="pay-item"><span>🔔</span> <span>0.50€</span></div>
+                <div class="pay-item"><span>🍒</span> <span>0.20€</span></div>
+                <div class="pay-item"><span>🍓</span> <span>0.15€</span></div>
+                <div class="pay-item"><span>🍋</span> <span>0.10€</span></div>
+                <div class="pay-item"><span>🍊</span> <span>0.10€</span></div>
+                <div class="pay-item"><span>🍑</span> <span>0.05€</span></div>
+                <div class="pay-item"><span>🍇</span> <span>0.05€</span></div>
+                <div class="pay-item"><span>🍉</span> <span>0.05€</span></div>
+            </div>
+            <p class="pay-note">* Οι τιμές είναι ανά σύμβολο</p>
+    </div>
+
+    <div id="app">
+        <div id="balance-container">
+            Balance: <span id="coins-count">50.00€</span>
+    </div>
+
+        <div class="main-grid">
+            <div class="doors">
+                <div class="door"><div class="boxes"></div></div>
+                <div class="door"><div class="boxes"></div></div>
+                <div class="door"><div class="boxes"></div></div>
+                <div class="door"><div class="boxes"></div></div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button id="spinner" class="spin-btn">
+                <span class="spin-icon">⟳</span>
+                <span class="bet-text">1.00€</span> 
+            </button>
+        </div>
+                        
+        <p class="info"></p>
+    </div>
+    
+    <script src="java.js"></script>
+</body>
+</html>
