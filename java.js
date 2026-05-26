@@ -2,6 +2,12 @@
   "use strict";
 
   let balance = 50.00; 
+  let currentBet = 1.00;
+  const betOptions = [0.20, 0.40, 0.60, 0.80, 1.00, 2.00, 5.00, 10.00];
+  let betIndex = 4; // Ξεκινάμε από το 1.00€ (index 4)
+  let currentMultiplier = 1;
+  let isAutoplay = false;
+
   const spinSound = new window.Audio("spin.mp3");
   const winSound = new window.Audio("win.mp3");
   const popSound = new window.Audio("pop.mp3");
@@ -9,27 +15,49 @@
   winSound.volume = 0.3;
   popSound.volume = 1.0;
 
-  const items = ["7️⃣", "💎", "🍎", "🍀", "🔔", "🍒", "🍓", "🍋", "🍊", "🍑", "🍇", "🍉"];
+  // Προσθέσαμε το ⭐ ως Wild
+  const items = ["7️⃣", "💎", "🍎", "🍀", "🔔", "⭐", "🍒", "🍓", "🍋", "🍊", "🍑", "🍇", "🍉"];
   
   const doors = document.querySelectorAll(".door");
   const spinnerButton = document.querySelector("#spinner");
-  const coinDisplay = document.querySelector("#coins-count");
+  const betDisplay = document.querySelector(".bet-text");
   const infoText = document.querySelector(".info");
+  const multDisplay = document.querySelector("#multiplier-display");
+  const coinDisplay = document.querySelector("#coins-count");
+  const autoButton = document.querySelector("#auto-btn");
+
+  // Συνάρτηση για την ενημέρωση της εμφάνισης του στοιχήματος και του ελέγχου υπολοίπου
+  function updateBetDisplay() {
+    if (betDisplay) {
+      betDisplay.textContent = currentBet.toFixed(2) + "€";
+      
+      // Αν το υπόλοιπο είναι αρκετό, αφαιρούμε το κόκκινο αναβόσβησμα
+      if (balance >= currentBet) {
+        betDisplay.classList.remove("no-funds");
+      } else {
+        betDisplay.classList.add("no-funds");
+      }
+    }
+  }
 
   if (coinDisplay) coinDisplay.textContent = balance.toFixed(2) + "€";
+  updateBetDisplay();
 
   async function spin() {
-    if (balance < 1.00) {
-      alert("Χρειάζεσαι τουλάχιστον 1.00€!");
+    if (balance < currentBet) {
+      alert(`Χρειάζεσαι τουλάχιστον ${currentBet.toFixed(2)}€ για αυτό το στοίχημα!`);
       return;
     }
 
     spinnerButton.style.pointerEvents = "none";
     spinnerButton.style.opacity = "0.5";
     infoText.textContent = "Spinning...";
+    currentMultiplier = 1; // Reset multiplier σε κάθε νέο spin
+    if (multDisplay) multDisplay.textContent = "";
 
-    balance -= 1.00;
+    balance -= currentBet;
     if (coinDisplay) coinDisplay.textContent = balance.toFixed(2) + "€";
+    updateBetDisplay(); // Ενημέρωση μετά την αφαίρεση χρημάτων
 
     spinSound.currentTime = 0;
     spinSound.play();
@@ -113,6 +141,7 @@
     });
 
     const counts = {};
+    const wildPositions = [];
     const toExplode = [];
     const symbolValues = {
         "7️⃣": 5.00, "💎": 3.00, "🍎": 1.50, "🍀": 1.00,
@@ -120,27 +149,50 @@
         "🍊": 0.10, "🍑": 0.05, "🍇": 0.05, "🍉": 0.05
     };
 
+    // Εντοπισμός Wilds
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 4; c++) {
-        const sym = grid[r][c].symbol;
-        if (sym !== "❓") {
-          if (!counts[sym]) counts[sym] = [];
-          counts[sym].push(grid[r][c]);
+        if (grid[r][c].symbol === "⭐") {
+          wildPositions.push(grid[r][c]);
         }
       }
     }
 
+    // Καταμέτρηση συμβόλων λαμβάνοντας υπόψη τα Wilds
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        const sym = grid[r][c].symbol;
+        if (sym !== "❓" && sym !== "⭐") {
+          if (!counts[sym]) counts[sym] = [];
+          // Προσθήκη του συμβόλου αν δεν έχει ήδη προστεθεί σε αυτή τη λίστα
+          if (!counts[sym].includes(grid[r][c])) {
+             counts[sym].push(grid[r][c]);
+          }
+        }
+      }
+    }
+
+    // Προσθήκη των Wilds σε κάθε γκρουπ συμβόλων που βρέθηκε
+    for (const sym in counts) {
+      wildPositions.forEach(wild => counts[sym].push(wild));
+    }
+
     let wonThisRound = false;
+    let totalWinThisStep = 0;
+
     for (const sym in counts) {
       if (counts[sym].length >= 5) { // Δυσκολία 5+
         wonThisRound = true;
         counts[sym].forEach(item => toExplode.push(item.element));
         let val = symbolValues[sym] || 0.05;
-        balance += (counts[sym].length * val);
+        totalWinThisStep += (counts[sym].length * val * currentBet * currentMultiplier);
       }
     }
 
     if (wonThisRound) {
+      balance += totalWinThisStep;
+      if (multDisplay) multDisplay.textContent = `COMBO X${currentMultiplier}!`;
+      
       // 1. Παίζουμε τους ήχους
       popSound.currentTime = 0;
       popSound.play();
@@ -150,7 +202,9 @@
       const mainGrid = document.querySelector(".main-grid");
       if (mainGrid) {
         mainGrid.classList.add("winning");
+        if (currentMultiplier > 1) mainGrid.classList.add("shake");
         setTimeout(() => mainGrid.classList.remove("winning"), 800); // Αυξήσαμε τη λάμψη στα 800ms
+        setTimeout(() => mainGrid.classList.remove("shake"), 500);
       }
 
       if (coinDisplay) coinDisplay.textContent = balance.toFixed(2) + "€";
@@ -171,24 +225,30 @@
       
       fillGaps();
 
+      currentMultiplier++; // Αύξηση πολλαπλασιαστή για το επόμενο cascade
       // 5. Αναμονή πριν τον επόμενο έλεγχο (Chain Reaction)
       // Το κάνουμε 1 δευτερόλεπτο για να είναι πιο ομαλό το "πέσιμο"
       await new Promise(r => setTimeout(r, 1000));
       return checkResult(); 
     }
     
-   // ΠΡΟΣΘΗΚΗ: Έλεγχος για το αν αναβοσβήνει το κόστος
-   const betDisplay = document.querySelector(".bet-text");
-   if (balance < 1.00) {
-       if (betDisplay) betDisplay.classList.add("no-funds");
-   } else {
-       if (betDisplay) betDisplay.classList.remove("no-funds");
-   }
+   // Έλεγχος υπολοίπου μετά τα κέρδη
+   updateBetDisplay();
 
    // Εδώ ξεκλειδώνει το κουμπί για το επόμενο πάτημα
    spinnerButton.style.pointerEvents = "auto";
    spinnerButton.style.opacity = "1";
    infoText.textContent = "Good Luck!";
+
+   // Έλεγχος για Autoplay
+   if (isAutoplay) {
+     if (balance >= currentBet) {
+       // Μικρή καθυστέρηση 1.2 δευτερόλεπτα πριν το επόμενο αυτόματο spin
+       setTimeout(() => { if (isAutoplay) spin(); }, 1200);
+     } else {
+       toggleAutoplay(); // Σταμάτα αν δεν φτάνουν τα χρήματα
+     }
+   }
  } // <--- Εδώ κλείνει η checkResult
 
   function fillGaps() {
@@ -218,6 +278,49 @@
   }
 
   if (spinnerButton) spinnerButton.addEventListener("click", spin);
+
+  // --- Διαχείριση Autoplay ---
+  function toggleAutoplay() {
+    isAutoplay = !isAutoplay;
+    if (isAutoplay) {
+      autoButton.classList.add("active");
+      autoButton.textContent = "STOP";
+      // Αν δεν τρέχει ήδη spin, ξεκίνα το
+      if (spinnerButton.style.pointerEvents !== "none") spin();
+    } else {
+      autoButton.classList.remove("active");
+      autoButton.textContent = "AUTO";
+    }
+  }
+
+  if (autoButton) autoButton.addEventListener("click", toggleAutoplay);
+
+  // --- Διαχείριση Επιλογής Στοιχήματος ---
+  const betMinus = document.querySelector("#bet-minus");
+  const betPlus = document.querySelector("#bet-plus");
+
+  if (betMinus) {
+    betMinus.addEventListener("click", () => {
+      if (betIndex > 0) {
+        if (isAutoplay) toggleAutoplay();
+        betIndex--;
+        currentBet = betOptions[betIndex];
+        updateBetDisplay();
+      }
+    });
+  }
+
+  if (betPlus) {
+    betPlus.addEventListener("click", () => {
+      if (betIndex < betOptions.length - 1) {
+        if (isAutoplay) toggleAutoplay();
+        betIndex++;
+        currentBet = betOptions[betIndex];
+        updateBetDisplay();
+      }
+    });
+  }
+
   // --- Διαχείριση Πίνακα Κερδών (Toggle Paytable) ---
   const toggleBtn = document.querySelector("#toggle-paytable");
   const paytable = document.querySelector(".paytable");
