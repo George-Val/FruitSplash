@@ -108,6 +108,18 @@ html, body {
   box-shadow: 0 0 35px rgba(107, 255, 139, 0.8);
 }
 
+/* Εφέ δόνησης για μεγάλα κέρδη */
+.shake {
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0% { transform: translate(1px, 1px); }
+  20% { transform: translate(-3px, 0px); }
+  40% { transform: translate(3px, 2px); }
+  100% { transform: translate(0px, 0px); }
+}
+
 .doors {
   display: flex;
   gap: 8px; /* Κενό ανάμεσα στις στήλες */
@@ -164,6 +176,29 @@ html, body {
   padding-top: 5px; /* Δίνει λίγο χώρο πάνω */
 }
 
+.auto-btn {
+  width: 65px;
+  height: 45px;
+  border-radius: 8px;
+  border: 2px solid #6bff8b;
+  background: rgba(0, 0, 0, 0.8);
+  color: #6bff8b;
+  font-weight: bold;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auto-btn.active {
+  background: #6bff8b;
+  color: black;
+  box-shadow: 0 0 15px rgba(107, 255, 139, 0.6);
+}
+
+.auto-btn:hover {
+  transform: scale(1.05);
+}
+
 .bet-text {
   font-size: 0.8rem; /* Μικρό μέγεθος */
   color: #6bff8b;    /* Πράσινο χρώμα χρημάτων */
@@ -174,6 +209,33 @@ html, body {
 
 .spin-icon {
   font-size: 2.2rem; /* Μικραίνουμε ελάχιστα το εικονίδιο για να χωράνε και τα δύο */
+}
+
+/* Κουμπιά ελέγχου στοιχήματος (- / +) */
+.bet-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: 2px solid #ffd700;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.1s, background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.bet-btn:hover {
+  background: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+
+.bet-btn:active {
+  transform: scale(0.9);
 }
 
 /* Εφέ αναβοσβήσματος για όταν δεν φτάνουν τα χρήματα */
