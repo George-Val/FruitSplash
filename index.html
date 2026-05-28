@@ -12,14 +12,19 @@
         
         <div class="paytable hidden"> <h3>Πίνακας Κερδών (για 5+)</h3>
             <div class="paytable-grid">
+                <div class="pay-item"><span>🥭</span> <span>10.00€</span></div>
                 <div class="pay-item"><span>7️⃣</span> <span>5.00€</span></div>
                 <div class="pay-item"><span>💎</span> <span>3.00€</span></div>
+                <div class="pay-item"><span>🍍</span> <span>2.50€</span></div>
                 <div class="pay-item"><span>🍎</span> <span>1.50€</span></div>
                 <div class="pay-item"><span>🍀</span> <span>1.00€</span></div>
-                <div class="pay-item"><span>🔔</span> <span>0.50€</span></div>
+                <div class="pay-item"><span>🔔</span> <span>0.80€</span></div>
+                <div class="pay-item"><span>🥥</span> <span>0.60€</span></div>
+                <div class="pay-item"><span>🍌</span> <span>0.40€</span></div>
                 <div class="pay-item"><span>⭐</span> <span>WILD</span></div>
-                <div class="pay-item"><span>🍒</span> <span>0.20€</span></div>
-                <div class="pay-item"><span>🍓</span> <span>0.15€</span></div>
+                <div class="pay-item"><span>🍒</span> <span>0.25€</span></div>
+                <div class="pay-item"><span>🍓</span> <span>0.20€</span></div>
+                <div class="pay-item"><span>🥝</span> <span>0.15€</span></div>
                 <div class="pay-item"><span>🍋</span> <span>0.10€</span></div>
                 <div class="pay-item"><span>🍊</span> <span>0.10€</span></div>
                 <div class="pay-item"><span>🍑</span> <span>0.05€</span></div>
@@ -27,9 +32,18 @@
                 <div class="pay-item"><span>🍉</span> <span>0.05€</span></div>
             </div>
             <p class="pay-note">* Οι τιμές είναι ανά σύμβολο</p>
+        </div>
     </div>
 
     <div id="app">
+        <div class="level-container">
+            <div class="level-text">
+                <span>Level <span id="level-val">1</span></span>
+                <span id="xp-text">0/100 XP</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="xp-fill"></div></div>
+        </div>
+
         <div id="balance-container">
             Balance: <span id="coins-count">50.00€</span>
     </div>
@@ -51,10 +65,24 @@
             </button>
             <button class="bet-btn" id="bet-plus">+</button>
             <button id="auto-btn" class="auto-btn">AUTO</button>
+            <button id="buy-btn" class="buy-btn">BUY<br>BONUS</button>
         </div>
         <div id="multiplier-display" style="color: #6bff8b; font-weight: bold; font-size: 1.5rem; height: 30px;"></div>
                         
         <p class="info"></p>
+        <div class="big-win-overlay">BIG WIN!</div>
+
+        <!-- Buy Bonus Confirmation Modal -->
+        <div id="modal-overlay" class="modal-overlay hidden">
+            <div class="confirm-modal">
+                <h3>ΕΠΙΒΕΒΑΙΩΣΗ BUY BONUS</h3>
+                <p>Κόστος: <span id="bonus-cost">0.00</span>€</p>
+                <div class="modal-buttons">
+                    <button id="confirm-buy" class="modal-btn confirm">✔</button>
+                    <button id="cancel-buy" class="modal-btn cancel">✖</button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script src="java.js"></script>
