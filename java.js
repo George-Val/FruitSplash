@@ -22,8 +22,20 @@
   winSound.volume = 0.3;
   popSound.volume = 1.0;
 
-  // Σύμβολα ανά επίπεδο
-  // Αφαιρούμε το ⭐ από τη λίστα για να ελέγχουμε την πιθανότητά του ξεχωριστά
+  // Κεντρική ρύθμιση συμβόλων: Αξία και Σπανιότητα (Weight)
+  // Όσο μεγαλύτερο το Weight, τόσο πιο συχνά εμφανίζεται το σύμβολο.
+  const symbolConfig = {
+    "🥭": { value: 10.00, weight: 2 },  "7️⃣": { value: 5.00, weight: 4 },
+    "💎": { value: 3.00, weight: 6 },   "🍍": { value: 2.50, weight: 8 },
+    "🍎": { value: 1.50, weight: 10 },  "🍀": { value: 1.00, weight: 12 },
+    "🔔": { value: 0.80, weight: 15 },  "🥥": { value: 0.60, weight: 20 },
+    "🍌": { value: 0.40, weight: 25 },  "🍒": { value: 0.25, weight: 30 },
+    "🍓": { value: 0.20, weight: 35 },  "🥝": { value: 0.15, weight: 40 },
+    "🍋": { value: 0.10, weight: 50 },  "🍊": { value: 0.10, weight: 50 },
+    "🍑": { value: 0.05, weight: 60 },  "🍇": { value: 0.05, weight: 60 },
+    "🍉": { value: 0.05, weight: 60 }
+  };
+
   const levelSymbols = {
     1: ["🍉", "🍇", "🍑", "🍊", "🍋"],
     2: ["🍌", "🥥", "🍓"],
@@ -32,10 +44,16 @@
     5: ["💎", "7️⃣", "🥭"]
   };
 
-  // Πιθανότητα εμφάνισης Wild (4% είναι μια καλή ισορροπία)
   const wildProbability = 0.04;
 
-  let activeItems = [...levelSymbols[1]];
+  let activeItems = [];
+  const addWeightedSymbols = (lvl) => {
+    levelSymbols[lvl].forEach(sym => {
+      const weight = symbolConfig[sym]?.weight || 10;
+      for (let i = 0; i < weight; i++) activeItems.push(sym);
+    });
+  };
+  addWeightedSymbols(1);
   
   const doors = document.querySelectorAll(".door");
   const spinnerButton = document.querySelector("#spinner");
@@ -149,7 +167,9 @@
         boxesClone.appendChild(box);
       }
 
-      const travelDistance = (pool.length - 4) * 80;
+      // Υπολογισμός του ύψους δυναμικά από το CSS για σωστό animation σε κινητά
+      const boxHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--box-size')) || 80;
+      const travelDistance = (pool.length - 4) * boxHeight;
       boxesClone.style.transitionDuration = `${duration}s`;
       
       if (!firstInit) {
@@ -174,12 +194,6 @@
     const counts = {};
     const wildPositions = [];
     const toExplode = [];
-    const symbolValues = {
-        "🥭": 10.00, "7️⃣": 5.00, "💎": 3.00, "🍍": 2.50, "🍎": 1.50, 
-        "🍀": 1.00, "🔔": 0.80, "🥥": 0.60, "🍌": 0.40, "🍒": 0.25, 
-        "🍓": 0.20, "🥝": 0.15, "🍋": 0.10, "🍊": 0.10, "🍑": 0.05, 
-        "🍇": 0.05, "🍉": 0.05
-    };
 
     // Εντοπισμός Wilds
     for (let r = 0; r < 4; r++) {
@@ -216,8 +230,10 @@
       if (counts[sym].length >= 5) { // Δυσκολία 5+
         wonThisRound = true;
         counts[sym].forEach(item => toExplode.push(item.element));
-        let val = symbolValues[sym] || 0.05;
-        totalWinThisStep += (counts[sym].length * val * currentBet * currentMultiplier);
+        const val = symbolConfig[sym]?.value || 0.05;
+        // Υπολογισμός κέρδους: Μόνο τα πραγματικά σύμβολα πληρώνονται, όχι τα Wilds
+        const realSymbolsCount = counts[sym].filter(item => item.symbol !== "⭐").length;
+        totalWinThisStep += (realSymbolsCount * val * currentBet * currentMultiplier);
       }
     }
 
@@ -326,7 +342,7 @@
     
     // Προσθήκη νέων συμβόλων στο pool
     if (levelSymbols[currentLevel]) {
-      activeItems.push(...levelSymbols[currentLevel]);
+      addWeightedSymbols(currentLevel);
     }
 
     document.querySelector("#level-val").textContent = currentLevel;
