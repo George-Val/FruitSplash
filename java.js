@@ -7,6 +7,13 @@
   let betIndex = 4; // Ξεκινάμε από το 1.00€ (index 4)
   let currentMultiplier = 1;
   let isAutoplay = false;
+  let isBonusSpin = false;
+  let isHeld = false; // Μεταβλητή για το Power Spin (κράτημα κουμπιού)
+
+  // Leveling System Variables
+  let currentLevel = 1;
+  let currentXP = 0;
+  let xpNeeded = 100;
 
   const spinSound = new window.Audio("spin.mp3");
   const winSound = new window.Audio("win.mp3");
@@ -15,8 +22,20 @@
   winSound.volume = 0.3;
   popSound.volume = 1.0;
 
-  // Προσθέσαμε το ⭐ ως Wild
-  const items = ["7️⃣", "💎", "🍎", "🍀", "🔔", "⭐", "🍒", "🍓", "🍋", "🍊", "🍑", "🍇", "🍉"];
+  // Σύμβολα ανά επίπεδο
+  // Αφαιρούμε το ⭐ από τη λίστα για να ελέγχουμε την πιθανότητά του ξεχωριστά
+  const levelSymbols = {
+    1: ["🍉", "🍇", "🍑", "🍊", "🍋"],
+    2: ["🍌", "🥥", "🍓"],
+    3: ["🍒", "🥝"],
+    4: ["🔔", "🍀", "🍍", "🍎"],
+    5: ["💎", "7️⃣", "🥭"]
+  };
+
+  // Πιθανότητα εμφάνισης Wild (4% είναι μια καλή ισορροπία)
+  const wildProbability = 0.04;
+
+  let activeItems = [...levelSymbols[1]];
   
   const doors = document.querySelectorAll(".door");
   const spinnerButton = document.querySelector("#spinner");
@@ -25,6 +44,14 @@
   const multDisplay = document.querySelector("#multiplier-display");
   const coinDisplay = document.querySelector("#coins-count");
   const autoButton = document.querySelector("#auto-btn");
+  const buyButton = document.querySelector("#buy-btn");
+
+  // Βοηθητική συνάρτηση για επιλογή συμβόλου με βάση τις πιθανότητες
+  function getRandomSymbol() {
+    const prob = isBonusSpin ? 0.15 : wildProbability; 
+    if (Math.random() < prob) return "⭐";
+    return activeItems[Math.floor(Math.random() * activeItems.length)];
+  }
 
   // Συνάρτηση για την ενημέρωση της εμφάνισης του στοιχήματος και του ελέγχου υπολοίπου
   function updateBetDisplay() {
@@ -43,19 +70,23 @@
   if (coinDisplay) coinDisplay.textContent = balance.toFixed(2) + "€";
   updateBetDisplay();
 
-  async function spin() {
-    if (balance < currentBet) {
-      alert(`Χρειάζεσαι τουλάχιστον ${currentBet.toFixed(2)}€ για αυτό το στοίχημα!`);
+  async function spin(isBonus = false) {
+    const cost = isBonus ? currentBet * 50 : currentBet;
+    
+    if (balance < cost) {
+      alert(`Χρειάζεσαι τουλάχιστον ${cost.toFixed(2)}€ για αυτό!`);
       return;
     }
 
     spinnerButton.style.pointerEvents = "none";
     spinnerButton.style.opacity = "0.5";
-    infoText.textContent = "Spinning...";
-    currentMultiplier = 1; // Reset multiplier σε κάθε νέο spin
-    if (multDisplay) multDisplay.textContent = "";
+    infoText.textContent = isBonus ? "SUPER SPIN!" : "Spinning...";
+    
+    isBonusSpin = isBonus;
+    currentMultiplier = isBonus ? 5 : 1; 
+    if (multDisplay) multDisplay.textContent = isBonus ? "X5 START!" : "";
 
-    balance -= currentBet;
+    balance -= cost;
     if (coinDisplay) coinDisplay.textContent = balance.toFixed(2) + "€";
     updateBetDisplay(); // Ενημέρωση μετά την αφαίρεση χρημάτων
 
@@ -96,11 +127,11 @@
       }
 
       if (!firstInit) {
-        const arr = [];
-        for (let n = 0; n < groups; n++) {
-          arr.push(...items);
+        // Παράγουμε τυχαία σύμβολα για το spin pool
+        const poolSize = groups * 10; 
+        for (let n = 0; n < poolSize; n++) {
+          pool.push(getRandomSymbol());
         }
-        pool.push(...shuffle(arr));
       }
 
       boxesClone.addEventListener("transitionend", function () {
@@ -144,9 +175,10 @@
     const wildPositions = [];
     const toExplode = [];
     const symbolValues = {
-        "7️⃣": 5.00, "💎": 3.00, "🍎": 1.50, "🍀": 1.00,
-        "🔔": 0.50, "🍒": 0.20, "🍓": 0.15, "🍋": 0.10,
-        "🍊": 0.10, "🍑": 0.05, "🍇": 0.05, "🍉": 0.05
+        "🥭": 10.00, "7️⃣": 5.00, "💎": 3.00, "🍍": 2.50, "🍎": 1.50, 
+        "🍀": 1.00, "🔔": 0.80, "🥥": 0.60, "🍌": 0.40, "🍒": 0.25, 
+        "🍓": 0.20, "🥝": 0.15, "🍋": 0.10, "🍊": 0.10, "🍑": 0.05, 
+        "🍇": 0.05, "🍉": 0.05
     };
 
     // Εντοπισμός Wilds
@@ -192,6 +224,12 @@
     if (wonThisRound) {
       balance += totalWinThisStep;
       if (multDisplay) multDisplay.textContent = `COMBO X${currentMultiplier}!`;
+      if (multDisplay) {
+        multDisplay.textContent = `COMBO X${currentMultiplier}!`;
+        multDisplay.style.transform = "scale(1.5)";
+        multDisplay.style.color = "#6bff8b";
+        setTimeout(() => { multDisplay.style.transform = "scale(1)"; }, 300);
+      }
       
       // 1. Παίζουμε τους ήχους
       popSound.currentTime = 0;
@@ -206,6 +244,15 @@
         setTimeout(() => mainGrid.classList.remove("winning"), 800); // Αυξήσαμε τη λάμψη στα 800ms
         setTimeout(() => mainGrid.classList.remove("shake"), 500);
       }
+
+      // Έλεγχος για Big Win (πάνω από 10x το στοίχημα)
+      if (totalWinThisStep >= currentBet * 10) {
+        showBigWin();
+      }
+
+      // Προσθήκη XP βασισμένο στο κέρδος
+      currentXP += Math.round(totalWinThisStep * 10);
+      updateLevelProgress();
 
       if (coinDisplay) coinDisplay.textContent = balance.toFixed(2) + "€";
       
@@ -238,18 +285,55 @@
    // Εδώ ξεκλειδώνει το κουμπί για το επόμενο πάτημα
    spinnerButton.style.pointerEvents = "auto";
    spinnerButton.style.opacity = "1";
+   isBonusSpin = false; // Επαναφορά του flag
    infoText.textContent = "Good Luck!";
 
-   // Έλεγχος για Autoplay
-   if (isAutoplay) {
+   // Έλεγχος για Autoplay ή Power Spin (Hold)
+   if (isAutoplay || isHeld) {
      if (balance >= currentBet) {
-       // Μικρή καθυστέρηση 1.2 δευτερόλεπτα πριν το επόμενο αυτόματο spin
-       setTimeout(() => { if (isAutoplay) spin(); }, 1200);
+       // 500ms για Autoplay, σχεδόν ακαριαία (50ms) για Power Spin ενώ το κρατάς
+       const delay = isAutoplay ? 500 : 50;
+       setTimeout(() => { 
+         if (isAutoplay || isHeld) spin(); 
+       }, delay);
      } else {
-       toggleAutoplay(); // Σταμάτα αν δεν φτάνουν τα χρήματα
+       if (isAutoplay) toggleAutoplay();
+       isHeld = false;
      }
    }
  } // <--- Εδώ κλείνει η checkResult
+
+  function showBigWin() {
+    let winMsg = document.querySelector(".big-win-overlay");
+    winMsg.classList.add("show");
+    setTimeout(() => winMsg.classList.remove("show"), 2000);
+  }
+
+  function updateLevelProgress() {
+    if (currentXP >= xpNeeded) {
+      levelUp();
+    }
+    const fill = document.querySelector("#xp-fill");
+    const xpText = document.querySelector("#xp-text");
+    if (fill) fill.style.width = `${(currentXP / xpNeeded) * 100}%`;
+    if (xpText) xpText.textContent = `${currentXP}/${xpNeeded} XP`;
+  }
+
+  function levelUp() {
+    currentLevel++;
+    currentXP = 0;
+    xpNeeded = currentLevel * 150;
+    
+    // Προσθήκη νέων συμβόλων στο pool
+    if (levelSymbols[currentLevel]) {
+      activeItems.push(...levelSymbols[currentLevel]);
+    }
+
+    document.querySelector("#level-val").textContent = currentLevel;
+    infoText.textContent = `LEVEL UP! REACHED ${currentLevel}`;
+    infoText.style.color = "#ffd700";
+    setTimeout(() => { infoText.style.color = "white"; }, 2000);
+  }
 
   function fillGaps() {
     doors.forEach(door => {
@@ -260,7 +344,7 @@
       for (let i = 0; i < needed; i++) {
         const newBox = document.createElement("div");
         newBox.classList.add("box");
-        newBox.textContent = items[Math.floor(Math.random() * items.length)];
+        newBox.textContent = getRandomSymbol();
         newBox.style.opacity = "0";
         boxesContainer.prepend(newBox);
         setTimeout(() => { newBox.style.opacity = "1"; }, 50);
@@ -277,7 +361,29 @@
     return arr;
   }
 
-  if (spinnerButton) spinnerButton.addEventListener("click", spin);
+  // --- Διαχείριση Power Spin (Hold) ---
+  const startHold = (e) => {
+    // Αγνόησε αν δεν είναι το αριστερό κλικ
+    if (e.type === "mousedown" && e.button !== 0) return;
+    isHeld = true;
+    if (spinnerButton.style.pointerEvents !== "none") spin(false);
+  };
+
+  const endHold = () => {
+    isHeld = false;
+  };
+
+  const handleSpinClick = () => {
+    if (spinnerButton.style.pointerEvents !== "none") spin(false);
+  };
+
+  if (spinnerButton) {
+    spinnerButton.addEventListener("mousedown", startHold);
+    spinnerButton.addEventListener("touchstart", startHold, { passive: true });
+    spinnerButton.addEventListener("click", handleSpinClick); 
+  }
+  window.addEventListener("mouseup", endHold);
+  window.addEventListener("touchend", endHold);
 
   // --- Διαχείριση Autoplay ---
   function toggleAutoplay() {
@@ -294,6 +400,31 @@
   }
 
   if (autoButton) autoButton.addEventListener("click", toggleAutoplay);
+
+  // --- Διαχείριση Buy Bonus ---
+  const modalOverlay = document.querySelector("#modal-overlay");
+  const bonusCostSpan = document.querySelector("#bonus-cost");
+  const confirmBuyBtn = document.querySelector("#confirm-buy");
+  const cancelBuyBtn = document.querySelector("#cancel-buy");
+
+  if (buyButton) {
+    buyButton.addEventListener("click", () => {
+      if (spinnerButton.style.pointerEvents !== "none") {
+        const cost = currentBet * 50;
+        bonusCostSpan.textContent = cost.toFixed(2);
+        modalOverlay.classList.remove("hidden");
+      }
+    });
+  }
+
+  if (confirmBuyBtn) confirmBuyBtn.addEventListener("click", () => {
+    modalOverlay.classList.add("hidden");
+    spin(true);
+  });
+
+  if (cancelBuyBtn) cancelBuyBtn.addEventListener("click", () => {
+    modalOverlay.classList.add("hidden");
+  });
 
   // --- Διαχείριση Επιλογής Στοιχήματος ---
   const betMinus = document.querySelector("#bet-minus");
