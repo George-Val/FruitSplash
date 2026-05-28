@@ -10,6 +10,10 @@ html, body {
   touch-action: manipulation;
 }
 
+:root {
+  --box-size: 80px; /* Προεπιλεγμένο μέγεθος για desktop */
+}
+
 *, *::before, *::after {
   box-sizing: inherit;
 }
@@ -127,8 +131,8 @@ html, body {
 }
 
 .door {
-  width: 80px;
-  height: 320px; /* 4 σειρές x 80px */
+  width: var(--box-size);
+  height: calc(var(--box-size) * 4);
   overflow: hidden;
   background: rgba(0,0,0,0.4);
   border: 2px solid #444;
@@ -142,8 +146,8 @@ html, body {
 }
 
 .box {
-  width: 80px;
-  height: 80px;
+  width: var(--box-size);
+  height: var(--box-size);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -344,7 +348,16 @@ html, body {
 
 .big-win-overlay.show {
   transform: translate(-50%, -50%) scale(1);
-  animation: shake 0.5s infinite;
+  animation: bigWinShake 0.5s infinite;
+}
+
+@keyframes bigWinShake {
+  0% { transform: translate(-50%, -50%) scale(1) translate(1px, 1px); }
+  20% { transform: translate(-50%, -50%) scale(1) translate(-3px, 0px); }
+  40% { transform: translate(-50%, -50%) scale(1) translate(3px, 2px); }
+  60% { transform: translate(-50%, -50%) scale(1) translate(-3px, 1px); }
+  80% { transform: translate(-50%, -50%) scale(1) translate(2px, -1px); }
+  100% { transform: translate(-50%, -50%) scale(1) translate(0px, 0px); }
 }
 
 /* Level System UI */
@@ -438,3 +451,38 @@ html, body {
 .modal-btn.confirm { background: #6bff8b; color: #000; }
 .modal-btn.cancel { background: #ff4d4d; }
 .modal-btn:hover { transform: scale(1.1); }
+
+/* Προσαρμογές για κινητά (Responsive Design) */
+@media (max-width: 480px) {
+  :root {
+    --box-size: 65px; /* Μικρότερο μέγεθος συμβόλων για να χωράνε στην οθόνη */
+  }
+  
+  .box {
+    font-size: 1.8rem;
+  }
+
+  .buttons {
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .spin-btn {
+    width: 75px;
+    height: 75px;
+  }
+
+  .big-win-overlay {
+    font-size: 3.5rem;
+  }
+
+  .level-container {
+    width: 280px;
+  }
+  
+  #balance-container {
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    margin-bottom: 15px;
+  }
+}
