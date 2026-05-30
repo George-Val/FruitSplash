@@ -68,6 +68,11 @@ html, body {
     padding: 2px 0;
 }
 
+/* Ειδικό χρώμα για το WILD στον πίνακα κερδών */
+.pay-item:nth-child(8) span:last-child {
+    color: #ffd700 !important;
+}
+
 .pay-item span:last-child {
     color: #6bff8b;
     font-weight: bold;
@@ -153,6 +158,22 @@ html, body {
   align-items: center;
   font-size: 2.2rem;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+}
+
+/* Στυλ για το Wild Σύμβολο */
+.box.is-wild {
+  flex-direction: column;
+  line-height: 1;
+}
+
+.box.is-wild::after {
+  content: "WILD";
+  font-size: 0.65rem;
+  color: #ffd700; /* Χρυσό χρώμα */
+  font-weight: 900;
+  margin-top: -4px;
+  text-shadow: 0 0 5px rgba(0,0,0,0.8);
+  letter-spacing: 0.5px;
 }
 
 /* Κουμπιά & Info */
@@ -286,6 +307,7 @@ html, body {
 #paytable-container {
   position: absolute; /* Τον βγάζει τελείως από τη ροή, οπότε το flexbox τον αγνοεί */
   top: 10px;
+  top: 40px;
   left: 10px;
   z-index: 999;
   display: block; /* Σιγουρεύουμε ότι δεν συμπεριφέρεται σαν flex item */
@@ -343,11 +365,14 @@ html, body {
   font-weight: 900;
   text-align: center;
   transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .big-win-overlay.show {
   transform: translate(-50%, -50%) scale(1);
+  pointer-events: auto; /* Επιτρέπει το κλικ πάνω στο overlay */
   animation: bigWinShake 0.5s infinite;
 }
 
