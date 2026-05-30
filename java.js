@@ -6,6 +6,7 @@
   const betOptions = [0.20, 0.40, 0.60, 0.80, 1.00, 2.00, 5.00, 10.00];
   let betIndex = 4; // Ξεκινάμε από το 1.00€ (index 4)
   let currentMultiplier = 1;
+  let roundTotalWin = 0; // Συνολικό κέρδος της τρέχουσας γύρας
   let isAutoplay = false;
   let isBonusSpin = false;
   let isHeld = false; // Μεταβλητή για το Power Spin (κράτημα κουμπιού)
@@ -25,10 +26,10 @@
   // Κεντρική ρύθμιση συμβόλων: Αξία και Σπανιότητα (Weight)
   // Όσο μεγαλύτερο το Weight, τόσο πιο συχνά εμφανίζεται το σύμβολο.
   const symbolConfig = {
-    "🥭": { value: 10.00, weight: 2 },  "7️⃣": { value: 5.00, weight: 4 },
-    "💎": { value: 3.00, weight: 6 },   "🍍": { value: 2.50, weight: 8 },
-    "🍎": { value: 1.50, weight: 10 },  "🍀": { value: 1.00, weight: 12 },
-    "🔔": { value: 0.80, weight: 15 },  "🥥": { value: 0.60, weight: 20 },
+    "7️⃣": { value: 10.00, weight: 4 }, "💎": { value: 5.00, weight: 6 },
+    "🥭": { value: 3.00, weight: 2 },  "🍍": { value: 2.50, weight: 8 },
+    "🍎": { value: 1.50, weight: 10 },
+    "🥥": { value: 0.60, weight: 20 },
     "🍌": { value: 0.40, weight: 25 },  "🍒": { value: 0.25, weight: 30 },
     "🍓": { value: 0.20, weight: 35 },  "🥝": { value: 0.15, weight: 40 },
     "🍋": { value: 0.10, weight: 50 },  "🍊": { value: 0.10, weight: 50 },
@@ -40,7 +41,7 @@
     1: ["🍉", "🍇", "🍑", "🍊", "🍋"],
     2: ["🍌", "🥥", "🍓"],
     3: ["🍒", "🥝"],
-    4: ["🔔", "🍀", "🍍", "🍎"],
+    4: ["🍍", "🍎"],
     5: ["💎", "7️⃣", "🥭"]
   };
 
@@ -67,7 +68,7 @@
   // Βοηθητική συνάρτηση για επιλογή συμβόλου με βάση τις πιθανότητες
   function getRandomSymbol() {
     const prob = isBonusSpin ? 0.15 : wildProbability; 
-    if (Math.random() < prob) return "⭐";
+    if (Math.random() < prob) return "🧨";
     return activeItems[Math.floor(Math.random() * activeItems.length)];
   }
 
@@ -102,6 +103,7 @@
     
     isBonusSpin = isBonus;
     currentMultiplier = isBonus ? 5 : 1; 
+    roundTotalWin = 0; // Μηδενισμός κέρδους στην αρχή της γύρας
     if (multDisplay) multDisplay.textContent = isBonus ? "X5 START!" : "";
 
     balance -= cost;
@@ -147,8 +149,17 @@
       if (!firstInit) {
         // Παράγουμε τυχαία σύμβολα για το spin pool
         const poolSize = groups * 10; 
+        let wildInPool = false;
         for (let n = 0; n < poolSize; n++) {
-          pool.push(getRandomSymbol());
+          const sym = getRandomSymbol();
+          if (sym === "🧨") wildInPool = true;
+          pool.push(sym);
+        }
+
+        // Εγγύηση τουλάχιστον ενός Wild ανά στήλη στο Buy Bonus
+        if (isBonusSpin && !wildInPool) {
+          const randomIndex = (pool.length - poolSize) + Math.floor(Math.random() * poolSize);
+          pool[randomIndex] = "🧨";
         }
       }
 
@@ -164,6 +175,7 @@
         const box = document.createElement("div");
         box.classList.add("box");
         box.textContent = pool[i];
+        if (pool[i] === "🧨") box.classList.add("is-wild");
         boxesClone.appendChild(box);
       }
 
@@ -198,7 +210,7 @@
     // Εντοπισμός Wilds
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 4; c++) {
-        if (grid[r][c].symbol === "⭐") {
+        if (grid[r][c].symbol === "🧨") {
           wildPositions.push(grid[r][c]);
         }
       }
@@ -208,7 +220,7 @@
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 4; c++) {
         const sym = grid[r][c].symbol;
-        if (sym !== "❓" && sym !== "⭐") {
+        if (sym !== "❓" && sym !== "🧨") {
           if (!counts[sym]) counts[sym] = [];
           // Προσθήκη του συμβόλου αν δεν έχει ήδη προστεθεί σε αυτή τη λίστα
           if (!counts[sym].includes(grid[r][c])) {
@@ -232,25 +244,25 @@
         counts[sym].forEach(item => toExplode.push(item.element));
         const val = symbolConfig[sym]?.value || 0.05;
         // Υπολογισμός κέρδους: Μόνο τα πραγματικά σύμβολα πληρώνονται, όχι τα Wilds
-        const realSymbolsCount = counts[sym].filter(item => item.symbol !== "⭐").length;
+        const realSymbolsCount = counts[sym].filter(item => item.symbol !== "🧨").length;
         totalWinThisStep += (realSymbolsCount * val * currentBet * currentMultiplier);
       }
     }
 
     if (wonThisRound) {
+      roundTotalWin += totalWinThisStep;
       balance += totalWinThisStep;
-      if (multDisplay) multDisplay.textContent = `COMBO X${currentMultiplier}!`;
+
+      // Επαναφορά και αναπαραγωγή του ήχου "ποπ"
+      popSound.currentTime = 0;
+      popSound.play();
+
       if (multDisplay) {
         multDisplay.textContent = `COMBO X${currentMultiplier}!`;
         multDisplay.style.transform = "scale(1.5)";
         multDisplay.style.color = "#6bff8b";
         setTimeout(() => { multDisplay.style.transform = "scale(1)"; }, 300);
       }
-      
-      // 1. Παίζουμε τους ήχους
-      popSound.currentTime = 0;
-      popSound.play();
-      winSound.play();
 
       // 2. Εφέ στο Grid
       const mainGrid = document.querySelector(".main-grid");
@@ -259,11 +271,6 @@
         if (currentMultiplier > 1) mainGrid.classList.add("shake");
         setTimeout(() => mainGrid.classList.remove("winning"), 800); // Αυξήσαμε τη λάμψη στα 800ms
         setTimeout(() => mainGrid.classList.remove("shake"), 500);
-      }
-
-      // Έλεγχος για Big Win (πάνω από 10x το στοίχημα)
-      if (totalWinThisStep >= currentBet * 10) {
-        showBigWin();
       }
 
       // Προσθήκη XP βασισμένο στο κέρδος
@@ -298,6 +305,14 @@
    // Έλεγχος υπολοίπου μετά τα κέρδη
    updateBetDisplay();
 
+   // Έλεγχος για Big Win στο τέλος της γύρας (συνολικό κέρδος > 5x στοίχημα)
+   if (roundTotalWin >= currentBet * 5) {
+     showBigWin(roundTotalWin);
+     winSound.play(); // Παίζουμε τον ήχο νίκης εδώ για μεγαλύτερη έμφαση
+   } else if (roundTotalWin > 0) {
+     winSound.play(); // Απλός ήχος νίκης για μικρότερα κέρδη
+   }
+
    // Εδώ ξεκλειδώνει το κουμπί για το επόμενο πάτημα
    spinnerButton.style.pointerEvents = "auto";
    spinnerButton.style.opacity = "1";
@@ -319,10 +334,11 @@
    }
  } // <--- Εδώ κλείνει η checkResult
 
-  function showBigWin() {
+  function showBigWin(amount) {
     let winMsg = document.querySelector(".big-win-overlay");
+    winMsg.innerHTML = `BIG WIN!<div style="font-size: 2.5rem; color: #6bff8b; margin-top: 10px;">${amount.toFixed(2)}€</div>`;
     winMsg.classList.add("show");
-    setTimeout(() => winMsg.classList.remove("show"), 2000);
+    setTimeout(() => winMsg.classList.remove("show"), 3000);
   }
 
   function updateLevelProgress() {
@@ -360,7 +376,9 @@
       for (let i = 0; i < needed; i++) {
         const newBox = document.createElement("div");
         newBox.classList.add("box");
-        newBox.textContent = getRandomSymbol();
+        const symbol = getRandomSymbol();
+        newBox.textContent = symbol;
+        if (symbol === "🧨") newBox.classList.add("is-wild");
         newBox.style.opacity = "0";
         boxesContainer.prepend(newBox);
         setTimeout(() => { newBox.style.opacity = "1"; }, 50);
@@ -487,5 +505,12 @@
       }
     });
   }
+
+  // Δυνατότητα κλεισίματος του Big Win overlay με κλικ
+  const bigWinOverlay = document.querySelector(".big-win-overlay");
+  if (bigWinOverlay) {
+    bigWinOverlay.addEventListener("click", () => bigWinOverlay.classList.remove("show"));
+  }
+
   init();
 })();
