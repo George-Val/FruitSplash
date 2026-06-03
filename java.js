@@ -9,6 +9,9 @@
   let roundTotalWin = 0; // Συνολικό κέρδος της τρέχουσας γύρας
   let isAutoplay = false;
   let isBonusSpin = false;
+  let isFreeSpin = false;
+  let freeSpinsCount = 0;
+  let newFreeSpinsAwarded = 0; // Μετρητής για το overlay επιβράβευσης
   let isHeld = false; // Μεταβλητή για το Power Spin (κράτημα κουμπιού)
 
   // Leveling System Variables
@@ -37,24 +40,16 @@
     "🍉": { value: 0.05, weight: 60 }
   };
 
-  const levelSymbols = {
-    1: ["🍉", "🍇", "🍑", "🍊", "🍋"],
-    2: ["🍌", "🥥", "🍓"],
-    3: ["🍒", "🥝"],
-    4: ["🍍", "🍎"],
-    5: ["💎", "7️⃣", "🥭"]
-  };
-
   const wildProbability = 0.04;
 
   let activeItems = [];
-  const addWeightedSymbols = (lvl) => {
-    levelSymbols[lvl].forEach(sym => {
-      const weight = symbolConfig[sym]?.weight || 10;
-      for (let i = 0; i < weight; i++) activeItems.push(sym);
-    });
-  };
-  addWeightedSymbols(1);
+  // Αρχικοποίηση: Όλα τα σύμβολα είναι διαθέσιμα από την αρχή βάσει σπανιότητας
+  for (const sym in symbolConfig) {
+    const weight = symbolConfig[sym].weight || 10;
+    for (let i = 0; i < weight; i++) {
+      activeItems.push(sym);
+    }
+  }
   
   const doors = document.querySelectorAll(".door");
   const spinnerButton = document.querySelector("#spinner");
@@ -90,7 +85,18 @@
   updateBetDisplay();
 
   async function spin(isBonus = false) {
-    const cost = isBonus ? currentBet * 50 : currentBet;
+    let isFree = false;
+    let cost = isBonus ? currentBet * 50 : currentBet;
+
+    newFreeSpinsAwarded = 0; // Μηδενισμός σε κάθε νέα περιστροφή
+
+    // Χρήση δωρεάν περιστροφής αν υπάρχει και δεν είναι Buy Bonus
+    if (!isBonus && freeSpinsCount > 0) {
+      isFree = true;
+      cost = 0;
+      freeSpinsCount--;
+    }
+    isFreeSpin = isFree;
     
     if (balance < cost) {
       alert(`Χρειάζεσαι τουλάχιστον ${cost.toFixed(2)}€ για αυτό!`);
@@ -99,7 +105,12 @@
 
     spinnerButton.style.pointerEvents = "none";
     spinnerButton.style.opacity = "0.5";
-    infoText.textContent = isBonus ? "SUPER SPIN!" : "Spinning...";
+    
+    if (isFree) {
+      infoText.textContent = `FREE SPIN! (${freeSpinsCount} LEFT)`;
+    } else {
+      infoText.textContent = isBonus ? "SUPER SPIN!" : "Spinning...";
+    }
     
     isBonusSpin = isBonus;
     currentMultiplier = isBonus ? 5 : 1; 
@@ -149,17 +160,18 @@
       if (!firstInit) {
         // Παράγουμε τυχαία σύμβολα για το spin pool
         const poolSize = groups * 10; 
-        let wildInPool = false;
         for (let n = 0; n < poolSize; n++) {
           const sym = getRandomSymbol();
-          if (sym === "🧨") wildInPool = true;
           pool.push(sym);
         }
 
-        // Εγγύηση τουλάχιστον ενός Wild ανά στήλη στο Buy Bonus
-        if (isBonusSpin && !wildInPool) {
-          const randomIndex = (pool.length - poolSize) + Math.floor(Math.random() * poolSize);
-          pool[randomIndex] = "🧨";
+        // Εγγύηση τουλάχιστον ενός Wild στην ορατή περιοχή (grid) ανά στήλη στο Buy Bonus
+        if (isBonusSpin) {
+          const visibleSymbols = pool.slice(-4);
+          if (!visibleSymbols.includes("🧨")) {
+            const gridIndex = pool.length - 4 + Math.floor(Math.random() * 4);
+            pool[gridIndex] = "🧨";
+          }
         }
       }
 
@@ -205,7 +217,7 @@
 
     const counts = {};
     const wildPositions = [];
-    const toExplode = [];
+    const toExplode = new Set();
 
     // Εντοπισμός Wilds
     for (let r = 0; r < 4; r++) {
@@ -241,11 +253,11 @@
     for (const sym in counts) {
       if (counts[sym].length >= 5) { // Δυσκολία 5+
         wonThisRound = true;
-        counts[sym].forEach(item => toExplode.push(item.element));
+        counts[sym].forEach(item => toExplode.add(item.element));
         const val = symbolConfig[sym]?.value || 0.05;
-        // Υπολογισμός κέρδους: Μόνο τα πραγματικά σύμβολα πληρώνονται, όχι τα Wilds
-        const realSymbolsCount = counts[sym].filter(item => item.symbol !== "🧨").length;
-        totalWinThisStep += (realSymbolsCount * val * currentBet * currentMultiplier);
+        // Υπολογισμός κέρδους: Αν είναι Free Spin η αξία είναι 1€, αλλιώς το currentBet
+        const effectiveBet = isFreeSpin ? 1.00 : currentBet;
+        totalWinThisStep += (counts[sym].length * val * effectiveBet * currentMultiplier);
       }
     }
 
@@ -305,39 +317,66 @@
    // Έλεγχος υπολοίπου μετά τα κέρδη
    updateBetDisplay();
 
-   // Έλεγχος για Big Win στο τέλος της γύρας (συνολικό κέρδος > 5x στοίχημα)
+   let finalWait = 0;
+
+   // 1. Έλεγχος για Big Win
    if (roundTotalWin >= currentBet * 5) {
      showBigWin(roundTotalWin);
-     winSound.play(); // Παίζουμε τον ήχο νίκης εδώ για μεγαλύτερη έμφαση
+     winSound.play();
+     finalWait = 3500; // Χρόνος για το Big Win overlay + μικρό buffer
    } else if (roundTotalWin > 0) {
-     winSound.play(); // Απλός ήχος νίκης για μικρότερα κέρδη
+     winSound.play();
    }
 
-   // Εδώ ξεκλειδώνει το κουμπί για το επόμενο πάτημα
-   spinnerButton.style.pointerEvents = "auto";
-   spinnerButton.style.opacity = "1";
-   isBonusSpin = false; // Επαναφορά του flag
-   infoText.textContent = "Good Luck!";
+   // 2. Έλεγχος για μήνυμα Free Spins (εμφανίζεται μετά το Big Win αν υπάρχει)
+   if (newFreeSpinsAwarded > 0) {
+     const fsAmount = newFreeSpinsAwarded;
+     newFreeSpinsAwarded = 0;
+     setTimeout(() => {
+       showFreeSpinsAlert(fsAmount);
+     }, finalWait);
+     finalWait += 3500; // Επιπλέον χρόνος για το Free Spins overlay
+   }
 
-   // Έλεγχος για Autoplay ή Power Spin (Hold)
-   if (isAutoplay || isHeld) {
-     if (balance >= currentBet) {
-       // 500ms για Autoplay, σχεδόν ακαριαία (50ms) για Power Spin ενώ το κρατάς
-       const delay = isAutoplay ? 500 : 50;
-       setTimeout(() => { 
-         if (isAutoplay || isHeld) spin(); 
-       }, delay);
+   // 3. Ξεκλείδωμα κουμπιού και έναρξη επόμενης κίνησης
+   setTimeout(() => {
+     spinnerButton.style.pointerEvents = "auto";
+     spinnerButton.style.opacity = "1";
+     isBonusSpin = false;
+     isFreeSpin = false;
+
+     if (freeSpinsCount > 0) {
+       infoText.textContent = `FREE SPINS: ${freeSpinsCount}`;
      } else {
-       if (isAutoplay) toggleAutoplay();
-       isHeld = false;
+       infoText.textContent = "Good Luck!";
      }
-   }
+
+     if (isAutoplay || isHeld || freeSpinsCount > 0) {
+       if (balance >= currentBet || freeSpinsCount > 0) {
+         const delay = (isAutoplay || freeSpinsCount > 0) ? 500 : 50;
+         setTimeout(() => { 
+           if (isAutoplay || isHeld || freeSpinsCount > 0) spin(); 
+         }, delay);
+       } else {
+         if (isAutoplay) toggleAutoplay();
+         isHeld = false;
+       }
+     }
+   }, finalWait);
  } // <--- Εδώ κλείνει η checkResult
 
   function showBigWin(amount) {
     let winMsg = document.querySelector(".big-win-overlay");
     winMsg.innerHTML = `BIG WIN!<div style="font-size: 2.5rem; color: #6bff8b; margin-top: 10px;">${amount.toFixed(2)}€</div>`;
     winMsg.classList.add("show");
+    setTimeout(() => winMsg.classList.remove("show"), 3000);
+  }
+
+  function showFreeSpinsAlert(amount) {
+    let winMsg = document.querySelector(".big-win-overlay");
+    winMsg.innerHTML = `YOU WON!<div style="font-size: 2.5rem; color: #6bff8b; margin-top: 10px;">${amount} FREE SPINS!</div>`;
+    winMsg.classList.add("show");
+    // Κλείνει αυτόματα μετά από 3 δευτερόλεπτα
     setTimeout(() => winMsg.classList.remove("show"), 3000);
   }
 
@@ -354,16 +393,19 @@
   function levelUp() {
     currentLevel++;
     currentXP = 0;
-    xpNeeded = currentLevel * 150;
-    
-    // Προσθήκη νέων συμβόλων στο pool
-    if (levelSymbols[currentLevel]) {
-      addWeightedSymbols(currentLevel);
-    }
+    xpNeeded = currentLevel * 100;
 
     document.querySelector("#level-val").textContent = currentLevel;
-    infoText.textContent = `LEVEL UP! REACHED ${currentLevel}`;
-    infoText.style.color = "#ffd700";
+    
+    if (currentLevel % 3 === 0) { // Κάθε 3 επίπεδα κερδίζει 5 Free Spins
+      freeSpinsCount += 5;
+      newFreeSpinsAwarded += 5;
+      infoText.textContent = `LEVEL UP! +5 FREE SPINS!`;
+      infoText.style.color = "#6bff8b";
+    } else {
+      infoText.textContent = `LEVEL UP! REACHED ${currentLevel}`;
+      infoText.style.color = "#ffd700";
+    }
     setTimeout(() => { infoText.style.color = "white"; }, 2000);
   }
 
